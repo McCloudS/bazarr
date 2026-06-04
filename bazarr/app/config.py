@@ -383,6 +383,9 @@ validators = [
     # anticaptcha section
     Validator('anticaptcha.anti_captcha_key', must_exist=True, default='', is_type_of=str),
 
+    # flaresolverr section
+    Validator('flaresolverr.url', must_exist=True, default='', is_type_of=str),
+
     # deathbycaptcha section
     Validator('deathbycaptcha.username', must_exist=True, default='', is_type_of=str, cast=str),
     Validator('deathbycaptcha.password', must_exist=True, default='', is_type_of=str, cast=str),
@@ -751,6 +754,9 @@ def save_settings(settings_items):
                    'settings-deathbycaptcha-username', 'settings-deathbycaptcha-password']:
             configure_captcha = True
 
+        if key == 'settings-flaresolverr-url':
+            configure_flaresolverr_func()
+
         if key in ['update_schedule', 'settings-general-use_sonarr', 'settings-general-use_radarr',
                    'settings-general-auto_update', 'settings-general-upgrade_subs',
                    'settings-sonarr-series_sync', 'settings-radarr-movies_sync',
@@ -972,6 +978,13 @@ def configure_captcha_func():
             {settings.deathbycaptcha.username, settings.deathbycaptcha.password}))
     else:
         os.environ["ANTICAPTCHA_CLASS"] = ''
+
+
+def configure_flaresolverr_func():
+    if settings.flaresolverr.url != "":
+        os.environ["FLARESOLVERR_URL"] = str(settings.flaresolverr.url).rstrip('/')
+    else:
+        os.environ["FLARESOLVERR_URL"] = ''
 
 
 def configure_proxy_func():

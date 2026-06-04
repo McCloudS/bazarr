@@ -10,7 +10,7 @@ import rarfile
 
 from dogpile.cache.region import register_backend as register_cache_backend
 
-from app.config import settings, configure_captcha_func, write_config
+from app.config import settings, configure_captcha_func, configure_flaresolverr_func, write_config
 from app.get_args import args
 from app.logger import configure_logging
 from utilities.binaries import get_binary, BinaryNotFound
@@ -52,6 +52,9 @@ os.environ["SZ_HI_EXTENSION"] = settings.general.hi_extension
 
 # set anti-captcha provider and key
 configure_captcha_func()
+
+# set FlareSolverr URL
+configure_flaresolverr_func()
 
 # import Google Analytics module to make sure logging is properly configured afterwards
 from ga4mp import GtagMP  # noqa E402

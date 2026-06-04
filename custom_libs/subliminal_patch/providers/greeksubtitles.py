@@ -8,7 +8,7 @@ import zipfile
 import rarfile
 from subzero.language import Language
 from guessit import guessit
-from requests import Session
+from subliminal_patch.http import RetryingCFSession
 
 from subliminal import __short_version__
 from subliminal.providers import ParserBeautifulSoup, Provider
@@ -62,7 +62,7 @@ class GreekSubtitlesProvider(Provider):
         self.session = None
 
     def initialize(self):
-        self.session = Session()
+        self.session = RetryingCFSession()
         self.session.headers['User-Agent'] = 'Subliminal/{}'.format(__short_version__)
 
     def terminate(self):

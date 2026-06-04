@@ -118,6 +118,62 @@ class CFSession(CloudScraper):
         super(CFSession, self).__init__(*args, **kwargs)
         self.debug = os.environ.get("CF_DEBUG", False)
 
+    @staticmethod
+    def _get_flaresolverr_url():
+        return os.environ.get("FLARESOLVERR_URL", "").rstrip("/") or None
+
+    @staticmethod
+    def _is_cf_blocked(resp):
+        server = resp.headers.get('server', '').lower()
+        if 'cloudflare' not in server:
+            return False
+        return (resp.status_code in (403, 503) and
+                (resp.headers.get('cf-mitigated') or resp.headers.get('cf-ray')))
+
+    def _solve_with_flaresolverr(self, url):
+        """Call FlareSolverr to bypass a CF challenge.
+
+        Returns a requests.Response built from FlareSolverr's result (which
+        already fetched the page), so the caller can use it directly without
+        a separate retry — avoiding IP-mismatch issues where cf_clearance is
+        bound to FlareSolverr's IP rather than the container's.
+        Returns None if FlareSolverr is not configured or fails.
+        """
+        from requests.models import Response as RequestsResponse
+        from requests.structures import CaseInsensitiveDict
+
+        fs_url = self._get_flaresolverr_url()
+        if not fs_url:
+            return None
+        payload = {"cmd": "request.get", "url": url, "maxTimeout": 60000}
+        try:
+            r = requests.post("{}/v1".format(fs_url), json=payload,
+                              headers={"Content-Type": "application/json"}, timeout=90)
+            r.raise_for_status()
+            data = r.json()
+        except Exception as e:
+            logger.error("FlareSolverr: request failed: %s", e)
+            return None
+        if data.get("status") != "ok":
+            logger.error("FlareSolverr: error: %s", data.get("message", "unknown"))
+            return None
+        solution = data.get("solution", {})
+        # Store cookies and UA so subsequent requests in this session reuse them
+        for cookie in solution.get("cookies", []):
+            self.cookies.set(cookie["name"], cookie["value"],
+                             domain=cookie.get("domain", ""), path=cookie.get("path", "/"))
+        if solution.get("userAgent"):
+            self.headers["User-Agent"] = solution["userAgent"]
+        logger.info("FlareSolverr: obtained clearance for %s", url)
+        # Return FlareSolverr's fetched page directly — no retry needed
+        mock = RequestsResponse()
+        mock.status_code = solution.get("status", 200)
+        mock._content = (solution.get("response") or "").encode("utf-8", errors="replace")
+        mock.url = solution.get("url", url)
+        if solution.get("headers"):
+            mock.headers = CaseInsensitiveDict(solution["headers"])
+        return mock
+
     def _request(self, method, url, *args, **kwargs):
         ourSuper = super(CloudScraper, self)
         resp = ourSuper.request(method, url, *args, **kwargs)
@@ -135,15 +191,21 @@ class CFSession(CloudScraper):
 
         # Check if Cloudflare anti-bot is on
         try:
-            if self.is_Challenge_Request(resp):
+            if self.is_Challenge_Request(resp) or self._is_cf_blocked(resp):
+                logger.info("CF challenge detected for %s (status=%s)", url, resp.status_code)
+                fs_resp = self._solve_with_flaresolverr(url)
+                if fs_resp is not None:
+                    # FlareSolverr already fetched the page — return its response directly
+                    return fs_resp
+
                 if resp.request.method != 'GET':
                     # Work around if the initial request is not a GET,
                     # Supersede with a GET then re-request the original METHOD.
                     CloudScraper.request(self, 'GET', resp.url)
                     resp = ourSuper.request(method, url, *args, **kwargs)
-                else:
-                    # Solve Challenge
-                    resp = self.sendChallengeResponse(resp, **kwargs)
+                elif self.is_Challenge_Request(resp):
+                    # Only attempt cloudscraper's JS solver for recognised challenge pages
+                    resp = self.Challenge_Response(resp, **kwargs)
 
         except ValueError as e:
             if PY3:
@@ -151,6 +213,11 @@ class CFSession(CloudScraper):
             else:
                 error = e.message
             if error == "Captcha":
+                # Try FlareSolverr for explicit captcha challenges too
+                fs_resp = self._solve_with_flaresolverr(url)
+                if fs_resp is not None:
+                    return fs_resp
+
                 parsed_url = urlparse(url)
                 domain = parsed_url.netloc
                 # solve the captcha

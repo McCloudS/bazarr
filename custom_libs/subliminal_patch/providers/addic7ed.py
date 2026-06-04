@@ -10,7 +10,7 @@ from urllib.parse import quote_plus
 
 import babelfish
 from dogpile.cache.api import NO_VALUE
-from requests import Session
+from subliminal_patch.http import RetryingCFSession
 from requests.exceptions import RequestException
 from subliminal.cache import region
 from subliminal.video import Episode, Movie
@@ -95,7 +95,7 @@ class Addic7edProvider(_Addic7edProvider):
             raise ConfigurationError('Username and password or cookies must be specified')
 
     def initialize(self):
-        self.session = Session()
+        self.session = RetryingCFSession()
         self.session.headers['User-Agent'] = 'Subliminal/%s' % subliminal.__short_version__
 
         from .utils import FIRST_THOUSAND_OR_SO_USER_AGENTS as AGENT_LIST

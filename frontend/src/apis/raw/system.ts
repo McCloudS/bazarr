@@ -135,6 +135,13 @@ class SystemApi extends BaseApi {
     await this.patch("/notifications", { url });
   }
 
+  async testFlareSolverr(url: string) {
+    return this.get<{ status: boolean; version: string; message: string; error?: string }>(
+      "/flaresolverr",
+      { url },
+    );
+  }
+
   async testWebhook() {
     const response =
       await this.post<DataWrapper<{ success: boolean; message: string }>>(

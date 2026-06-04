@@ -18,7 +18,7 @@ import rarfile
 from babelfish import language_converters
 from subzero.language import Language
 from guessit import guessit
-from requests import Session
+from subliminal_patch.http import RetryingCFSession
 from six import text_type
 from random import randint, randrange
 
@@ -155,7 +155,7 @@ class ZimukuProvider(Provider):
                 return r
 
     def initialize(self):
-        self.session = Session()
+        self.session = RetryingCFSession()
         self.session.headers["User-Agent"] = AGENT_LIST[randint(0, len(AGENT_LIST) - 1)]
 
     def terminate(self):

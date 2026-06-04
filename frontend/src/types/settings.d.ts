@@ -9,9 +9,10 @@ interface Settings {
   radarr: Settings.Radarr;
   backup: Settings.Backup;
   translator: Settings.Translator;
-  // Anitcaptcha
+  // Captcha solvers
   anticaptcha: Settings.Anticaptcha;
   deathbycaptcha: Settings.DeathByCaptche;
+  flaresolverr: Settings.FlareSolverr;
   // Providers
   opensubtitlescom: Settings.OpenSubtitlesCom;
   addic7ed: Settings.Addic7ed;
@@ -214,6 +215,10 @@ declare namespace Settings {
   interface DeathByCaptche {
     username?: string;
     password?: string;
+  }
+
+  interface FlareSolverr {
+    url?: string;
   }
 
   // Providers
