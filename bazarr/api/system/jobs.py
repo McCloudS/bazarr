@@ -15,7 +15,7 @@ class SystemJobs(Resource):
         'job_id': fields.Integer(),
         'job_name': fields.String(),
         'status': fields.String(),
-        'last_run_time': fields.String(),
+        'last_run_time': fields.DateTime(dt_format='iso8601'),
         'is_progress': fields.Boolean(),
         'is_signalr': fields.Boolean(),
         'progress_value': fields.Integer(),
