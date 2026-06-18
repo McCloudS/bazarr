@@ -6,7 +6,7 @@ import inspect
 import os
 
 from time import sleep
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import deque
 from typing import Union
 from threading import Thread, Lock, RLock
@@ -64,7 +64,7 @@ class Job:
         self.args = args
         self.kwargs = kwargs
         self.status = 'pending'
-        self.last_run_time = datetime.now()
+        self.last_run_time = datetime.now(timezone.utc)
         self.is_progress = is_progress
         self.is_signalr = is_signalr
         self.progress_value = 0
@@ -541,7 +541,7 @@ class JobsQueue:
             return False
         try:
             job.status = 'running'
-            job.last_run_time = datetime.now()
+            job.last_run_time = datetime.now(timezone.utc)
             if 'job_id' not in job.kwargs or not job.kwargs['job_id']:
                 job.kwargs['job_id'] = job.job_id
             self.jobs_running_queue.append(job)
@@ -565,13 +565,13 @@ class JobsQueue:
         except Exception as e:
             logging.exception(f"Exception raised while running function: {e}")
             job.status = 'failed'
-            job.last_run_time = datetime.now()
+            job.last_run_time = datetime.now(timezone.utc)
             self.jobs_running_queue.remove(job)
             self.jobs_failed_queue.append(job)
             return False
         else:
             job.status = 'completed'
-            job.last_run_time = datetime.now()
+            job.last_run_time = datetime.now(timezone.utc)
             self.jobs_running_queue.remove(job)
             self.jobs_completed_queue.append(job)
             return True
